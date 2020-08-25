@@ -18,7 +18,7 @@ import numpy as np
 '''
 # 超参数
 batch_size = 64
-learning_rate = 0.1
+learning_rate = 0.01
 weight_decay = 0.0005
 num_epochs = 20
 gpus = '0'
@@ -83,7 +83,7 @@ for epoch in range(num_epochs):
     net.eval()
     results = []
     labels = []
-    for inp, out in val_iter:
+    for inp, out in val_dataset:
         with torch.no_grad():
             predict = net(inp.float().cuda()).sigmoid()
         predict = predict.detach().cpu().numpy().tolist()
