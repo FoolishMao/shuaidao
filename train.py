@@ -34,8 +34,8 @@ raw_data = pd.read_csv('data_under_scene.csv',header=0)
 dataset = raw_data.values
 X = torch.tensor(dataset[:, 0:36].astype(float))
 Y = torch.tensor(dataset[:, 36:].astype(float))
-Y = (Y==3)*1 #fall_down作为正样本，其余数据都作为负样本  #TODO 
-X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.1, random_state=9) #数据集拆分为训练集和测试集
+Y = (Y==3)*1 #fall_down作为正样本，其余数据都作为负样本  #TODO 制定合理的正负样本比例
+X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.1, random_state=9) #数据集拆分为训练集和测试集 #TODO 使用K折交叉验证
 net = nn.Sequential(
     nn.Linear(36, 128),
     nn.Dropout(),
@@ -60,6 +60,8 @@ for epoch in range(num_epochs):
     pbar = enumerate(train_iter)
     nb = len(train_iter)
     pbar = tqdm(train_iter, total=nb)
+    results = []
+    labels = []
     for inp, out in pbar:
         predict = net(inp.float().cuda()).sigmoid()
         l = loss(predict, out.float().cuda())
@@ -67,9 +69,16 @@ for epoch in range(num_epochs):
         l.backward()
         optimizer.step()
         #show
+        predict = predict.detach().cpu().numpy().tolist()
+        results += predict
+        out = out.numpy().tolist()
+        labels += out
         loss_data.update(l.item())
         s = ('%10s' * 2 + '%10.4g' * 1) % (epoch+1, num_epochs, loss_data.avg)
         pbar.set_description(s)
+    acc = compute_accuracy(np.array(labels).flatten(), np.array(results).flatten()) #TODO 尝试除了准确率之外其他的评价指标来判断模型的好坏
+    s = f'train_acc: {acc}'
+    print(s)
     # 测试
     net.eval()
     results = []
@@ -82,7 +91,7 @@ for epoch in range(num_epochs):
         out = out.numpy().tolist()
         labels += out
     acc = compute_accuracy(np.array(labels).flatten(), np.array(results).flatten())
-    s = f'acc: {acc}'
+    s = f'test_acc: {acc}'
     print(s)
     ckpt = {'epoch': epoch,
             'model': net.module if hasattr(net, 'module') else net,}
